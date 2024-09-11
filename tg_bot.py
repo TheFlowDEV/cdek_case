@@ -6,7 +6,7 @@ import translater as tr
 import emoji # для оформления
 
 
-info_text = 'Бот был разработан командой Kodiki на Хакатоне-ТПУ 11.09.2024'
+info_text = f'Бот был разработан командой Kodiki{emoji.emojize(':cat:')} на Хакатоне-ТПУ 11.09.2024'
 TELEGRAM_API_TOKEN = '7532048730:AAGDuCvqvWcsGP2pddWqZSc4NqM96vY4Ncw'
 bot = telebot.TeleBot(TELEGRAM_API_TOKEN)
 
@@ -16,15 +16,15 @@ def start_bot(message):
     if message.text=='/start':
         markup = types.InlineKeyboardMarkup()
         # Кнопка анализа товара
-        button_promt_analyse = types.InlineKeyboardButton('Проанализировать товар', callback_data = 'analyse_of_data')
+        button_promt_analyse = types.InlineKeyboardButton(f'Проанализировать товар{emoji.emojize(':label:')}', callback_data = 'analyse_of_data')
         # Кнопка информации о создателях
-        button_info = types.InlineKeyboardButton('Информация о боте', callback_data = 'info')
+        button_info = types.InlineKeyboardButton(f'Информация о боте{emoji.emojie(':robot:')}', callback_data = 'info')
         markup.add(button_promt_analyse)
         markup.add(button_info)
     else:
         bot.send_message(message.chat.id,f'Запустите бота командой /start')
 
-# Получение данных о товаре(запроса)
+# Получение заппроса(данных о товаре)
 @bot.message_handler(commands=['text'])
 def get_data(message):
     bot.send_message(message.chat.id, text = 'Пришлите описание, фотографию товара: ')
