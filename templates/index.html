@@ -1,0 +1,38 @@
+   <!DOCTYPE html>
+   <html lang="en">
+   <head>
+       <meta charset="UTF-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+       <title>Neural Network Predictor</title>
+   </head>
+   <body>
+       <h1>Neural Network Prediction</h1>
+       <form id="predictionForm">
+           <label for="inputData">Enter your data (comma separated):</label>
+           <input type="text" id="inputData" name="inputData" required>
+           <button type="submit">Submit</button>
+       </form>
+       <h2>Prediction Result:</h2>
+       <p id="predictionResult"></p>
+
+       <script>
+           document.getElementById('predictionForm').onsubmit = async function(event) {
+               event.preventDefault(); // Предотвращаем обычное поведение формы
+               const inputData = document.getElementById('inputData').value.split(',');
+
+               const response = await fetch('/predict', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json',
+                   },
+                   body: JSON.stringify({ input: inputData }),
+               });
+
+               const result = await response.json();
+               console.log(result);
+               document.getElementById('predictionResult').innerText = result.input;
+           };
+       </script>
+   </body>
+   </html>
+
