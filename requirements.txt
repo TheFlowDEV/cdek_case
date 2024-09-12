@@ -1,5 +1,9 @@
 opencv-python
 keras
-fastapi
+flask
 googletrans
 datasets
+emoji
+cv2
+numpy
+pillow
