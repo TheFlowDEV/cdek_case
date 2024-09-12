@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Network Predictor</title>
+    <style>
+        @font-face {
+            font-family: 'ermilov';
+            src: url('fonts/Ermilov-bold.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .custom-font {
+            font-family: 'ermilov', sans-serif;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 800px;
+            margin: 50px auto;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin: 0;
+            padding: 20px 0;
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        textarea {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 16px;
+            resize: vertical;
+        }
+
+        input[type="file"] {
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 100%;
+            height: 40px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #predictionResult {
+            font-size: 18px;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header custom-font">
+            <p>Neural Network Classification</p>
+        </div>
+        <h1 class="custom-font">Neural Network Prediction</h1>
+        <form id="predictionForm" enctype="multipart/form-data">
+            <label for="inputData">Enter your data (comma separated):</label>
+            <textarea id="inputData" name="inputData" placeholder="Enter your data..."></textarea>
+
+            <label for="fileInput">Choose an image:</label>
+            <input type="file" id="fileInput" name="fileInput" accept="image/*">
+
+            <button type="submit">Submit</button>
+        </form>
+        <h2 class="custom-font">Prediction Result:</h2>
+        <p id="predictionResult"></p>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').onsubmit = async function(event) {
+            event.preventDefault(); // Prevent default form submission
+            const inputData = document.getElementById('inputData').value.split(',');
+
+            const formData = new FormData();
+            formData.append('inputData', inputData);
+            formData.append('fileInput', document.getElementById('fileInput').files[0]);
+
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+            console.log(result);
+            document.getElementById('predictionResult').innerText = result.input;
+        };
+    </script>
+</body>
+</html>
