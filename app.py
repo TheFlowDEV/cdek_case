@@ -42,7 +42,6 @@ def predict():
         return jsonify({"error": "No file selected!"}), 400
 
     image = file.read()
-    print(image)
     description = translator.translate(description, dest="en").text
     image = cv2.resize(np.array(Image.open(io.BytesIO(image))), (128, 128))
     TEXT_DATA = [vectorizer.transform([description]).toarray()]
