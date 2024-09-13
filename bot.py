@@ -5,6 +5,7 @@ from telebot import types
 from googletrans import Translator
 import keras
 from random import randint, choice, shuffle
+from random import randint, choice, shuffle
 from tensorflow.keras import models
 import numpy as np
 from PIL import Image
@@ -19,27 +20,31 @@ desc_text = ''
 
 
 def get_users():
+    global users
     f = open('users.txt', 'rt').readlines()
     users_data = {}
     for i in f:
-        name, desc, ph = i.split()
-        users_data[name] = [desc, ph]
+        print(i.split('%'))
+        name, desc, ph = i.split('%')
+        users_data[int(name)] = [desc, ph]
 
     return users_data
 
 
+users = get_users()
+print(users)
+
+
 def save_data():
+    global users
     f = open('users.txt', 'wt')
     s = ''
     for i in users.items():
         name, lst = i
-        s += f'{name} {lst[0]} {lst[1]}\n'
+        s += f'{name}%{lst[0]}%{lst[1]}\n'
     f.write(s)
     f.close()
 
-
-users = get_users()
-print(users)
 
 info_text1 = f'Бот был разработан командой Kodiki на Хакатоне-ТПУ 11-13.09.2024❤️'
 markup1 = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -60,7 +65,16 @@ button_yes = types.KeyboardButton("Да")
 button_no = types.KeyboardButton("Нет")
 markup3.add(button_yes, button_no)
 
+markup3 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+button_yes = types.KeyboardButton("Да")
+button_no = types.KeyboardButton("Нет")
+markup3.add(button_yes, button_no)
+
 model = models.load_model('AI_CDEK.keras')
+
+with open("vec_and_le.pkl", 'rb') as f:
+    label_encoder, vectorizer = pickle.load(f)
+
 
 with open("vec_and_le.pkl", 'rb') as f:
     label_encoder, vectorizer = pickle.load(f)
@@ -73,6 +87,8 @@ with open("vec_and_le.pkl", 'rb') as f:
 @bot.message_handler(commands=['start'])
 def start_message(message):
     if message.text == '/start':
+        if message.chat.id not in users:
+            users[message.chat.id] = ['', '']
         if message.chat.id not in users:
             users[message.chat.id] = ['', '']
         bot.send_message(message.chat.id, f'Привет!🖐 Я бот-помощник анализа товара сайта CDEK', reply_markup=markup1)
@@ -96,7 +112,7 @@ def second_message(message):
 @bot.message_handler(content_types=['photo'])
 def get_image(message):
     global photo
-    raw = message.photo[2].file_id
+    raw = message.photo[-1].file_id
     name = raw + ".jpg"
     file_info = bot.get_file(raw)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -116,7 +132,11 @@ def msg(message):
     if message.text == 'Загрузить описание':
 
         bot.send_message(message.chat.id, 'Введите описание товара:')
+
+        bot.send_message(message.chat.id, 'Введите описание товара:')
     elif message.text == 'Загрузить фото':
+        bot.send_message(message.chat.id, "Пришлите фото: ")  # затычка
+        bot.register_next_step_handler(message, get_image)
         bot.send_message(message.chat.id, "Пришлите фото: ")  # затычка
         bot.register_next_step_handler(message, get_image)
 
@@ -139,8 +159,29 @@ def msg(message):
                 metka = predict.argmax(axis=-1)[0]
                 label_encoder_dd = label_encoder.inverse_transform([metka])[0]
 
-                predict = np.sort(predict)
-                bot.send_message(message.chat.id, str(label_encoder_dd), reply_markup=markup2)
+                # predict = np.sort(predict)
+                # ans =label_encoder_dd[0]
+                # for i in range(1, len(str(label_encoder_dd))):
+                #     if label_encoder_dd[i].isupper():
+                #         ans += str(' / ') + label_encoder_dd[i]
+                #     else:
+                #         ans += label_encoder_dd[i]
+
+                top_10_indices = np.argsort(predict[0])[::-1][:10]
+
+                top_10_probabilities = predict[0][top_10_indices]
+
+                top_10_labels = label_encoder.inverse_transform(top_10_indices)
+                ans = ''
+                for label, probability in zip(top_10_labels, top_10_probabilities):
+                    s = label[0]
+                    for i in range(1, len(label)):
+                        if label[i].isupper():
+                            s += str(' / ') + label[i]
+                        else:
+                            s += label[i]
+                    ans += f"{s}: {probability * 100:.2f}%\n"
+                bot.send_message(message.chat.id, ans, reply_markup=markup2)
             except Exception as e:
                 bot.send_message(message.chat.id, 'Ошибка, попробуйте еще!')
 
@@ -162,11 +203,15 @@ def msg(message):
     elif message.text == 'Нет':
         bot.send_message(message.chat.id, 'Требуются описание/фото товара: ', reply_markup=markup2)
     else:
-        if message.text not in ['Загрузить описание', 'Провести анализ', 'Доп.Информация', 'Анализ товара🛒',
-                                'Информация❓']:
-            users[message.chat.id][0] = message.text
-            save_data()
-            bot.reply_to(message, 'Описание товара загружено!:')
+        try:
+            if message.text not in ['Загрузить описание', 'Провести анализ', 'Доп.Информация', 'Анализ товара🛒',
+                                    'Информация❓']:
+                users[message.chat.id][0] = message.text
+                save_data()
+                bot.reply_to(message, 'Описание товара загружено!:')
+        except Exception as e:
+            bot.send_message(message.chat.id, "Ошиюка, попробуйте перезапустить бота командой /start")
 
 
 bot.infinity_polling()
+
