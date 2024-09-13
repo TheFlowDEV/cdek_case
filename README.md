@@ -9,4 +9,4 @@
 * Епифанов Вячеслав - Рисерчер
 * Михайлов Глеб - ML инженер
 
-Модель: https://drive.google.com/file/d/1-0hjff_KJVTesaGNVM19U5aqFFpxXV1M/view
+Модель, обученная на неполном датасете от СДЕК'а: https://drive.google.com/file/d/1-0Evu2BxV0KsvdCZ2AOKeZau0zCMrgwD/view?usp=sharing
