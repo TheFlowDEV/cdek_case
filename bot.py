@@ -4,6 +4,7 @@ import numpy as np
 from telebot import types
 from googletrans import Translator
 import keras
+from random import randint, choice, shuffle
 from tensorflow.keras import models
 import numpy as np
 from PIL import Image
@@ -13,6 +14,33 @@ import cv2
 TELEGRAM_API_TOKEN = '7532048730:AAGDuCvqvWcsGP2pddWqZSc4NqM96vY4Ncw'
 bot = telebot.TeleBot(TELEGRAM_API_TOKEN)
 # Стартовый набор кнопок
+photo = ''
+desc_text = ''
+
+
+def get_users():
+    f = open('users.txt', 'rt').readlines()
+    users_data = {}
+    for i in f:
+        name, desc, ph = i.split()
+        users_data[name] = [desc, ph]
+
+    return users_data
+
+
+def save_data():
+    f = open('users.txt', 'wt')
+    s = ''
+    for i in users.items():
+        name, lst = i
+        s += f'{name} {lst[0]} {lst[1]}\n'
+    f.write(s)
+    f.close()
+
+
+users = get_users()
+print(users)
+
 info_text1 = f'Бот был разработан командой Kodiki на Хакатоне-ТПУ 11-13.09.2024❤️'
 markup1 = types.ReplyKeyboardMarkup(resize_keyboard=True)
 button_analyse_product = types.InlineKeyboardButton('Анализ товара🛒')
@@ -27,16 +55,26 @@ button_analyse = types.KeyboardButton("Провести анализ")
 button_info2 = types.KeyboardButton("Доп.Информация")
 markup2.add(button_get_desc, button_get_photo, button_analyse, button_info2)
 
+markup3 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+button_yes = types.KeyboardButton("Да")
+button_no = types.KeyboardButton("Нет")
+markup3.add(button_yes, button_no)
+
 model = models.load_model('AI_CDEK.keras')
 
+with open("vec_and_le.pkl", 'rb') as f:
+    label_encoder, vectorizer = pickle.load(f)
+
+
 # Данные о товаре
-product_desc = ''
 
 
 # Встреча клиента
 @bot.message_handler(commands=['start'])
 def start_message(message):
     if message.text == '/start':
+        if message.chat.id not in users:
+            users[message.chat.id] = ['', '']
         bot.send_message(message.chat.id, f'Привет!🖐 Я бот-помощник анализа товара сайта CDEK', reply_markup=markup1)
         bot.register_next_step_handler(message, second_message)
     else:
@@ -47,7 +85,6 @@ def start_message(message):
 def second_message(message):
     if message.text == 'Анализ товара🛒':
         bot.send_message(message.chat.id, 'Требуются описание/фото товара: ', reply_markup=markup2)
-        bot.register_next_step_handler(message, third_message)
 
     elif message.text == 'Информация❓':
         bot.send_message(message.chat.id, info_text1)
@@ -55,40 +92,81 @@ def second_message(message):
 
 
 # Нажал на кнопку анализ
-def third_message(message):
+
+@bot.message_handler(content_types=['photo'])
+def get_image(message):
+    global photo
+    raw = message.photo[2].file_id
+    name = raw + ".jpg"
+    file_info = bot.get_file(raw)
+    downloaded_file = bot.download_file(file_info.file_path)
+    rand_name = str(randint(1, 100000)) + choice(
+        '132423rksjhfkjdkgdkfhgkjslakjlkgfhsldjglkhdslkjghlkfhskljajklg') + '.jpg'
+    with open(f'uploads/{rand_name}', 'wb') as new_file:
+        new_file.write(downloaded_file)
+    img = open(f'uploads/{rand_name}', 'rb')
+    bot.reply_to(message, "Фото загружено")
+    users[message.chat.id][1] = f'uploads/{rand_name}'
+    save_data()
+
+
+@bot.message_handler(content_types=['text'])
+def msg(message):
+    global photo, desc_text
     if message.text == 'Загрузить описание':
-        cid = message.chat.id
-        msg = message
-        bot.send_message(cid, 'Введите описание товара:')
 
-        @bot.message_handler(commands=['text'])
-        def record_desc(message):
-            product_desc = message.text
-            bot.reply_to(message, 'Описание записано.')
-
-        bot.register_next_step_handler(msg, third_message)
+        bot.send_message(message.chat.id, 'Введите описание товара:')
     elif message.text == 'Загрузить фото':
-        bot.send_message(message.chat.id, "Пришлите фото: ")
-        bot.register_next_step_handler(message, third_message)  # затычка
-
-
-    elif message.text == 'Провести анализ':  # & (product[] != '' |[]): #хз хз
-        bot.send_message(message.chat.id, "Начинаем анализ..........")
-        ####################################################
-        #                                                  #
-        #                 Работка для ИИ                   #
-        #                                                  #
-        ####################################################
-        bot.register_next_step_handler(message, third_message)
+        bot.send_message(message.chat.id, "Пришлите фото: ")  # затычка
+        bot.register_next_step_handler(message, get_image)
 
 
     elif message.text == 'Доп.Информация':
         bot.send_message(message.chat.id, info_text2)
-        bot.register_next_step_handler(message, third_message)
 
+
+    elif message.text == 'Да':
+        if not users[message.chat.id][1]:
+            bot.send_message(message.chat.id, 'Фото не загружено')
+        if not users[message.chat.id][0]:
+            bot.send_message(message.chat.id, 'Описание товара не загружено')
+        else:
+            try:
+                image = cv2.resize(np.array(Image.open(users[message.chat.id][1])), (128, 128))
+                TEXT_DATA = [vectorizer.transform([users[message.chat.id][0]]).toarray()]
+
+                predict = model.predict(x=[np.array([image]), TEXT_DATA])
+                metka = predict.argmax(axis=-1)[0]
+                label_encoder_dd = label_encoder.inverse_transform([metka])[0]
+
+                predict = np.sort(predict)
+                bot.send_message(message.chat.id, str(label_encoder_dd), reply_markup=markup2)
+            except Exception as e:
+                bot.send_message(message.chat.id, 'Ошибка, попробуйте еще!')
+
+
+    elif message.text == 'Провести анализ':
+        if not users[message.chat.id][1]:
+            bot.send_message(message.chat.id, 'Фото не загружено')
+        if not users[message.chat.id][0]:
+            bot.send_message(message.chat.id, 'Описание товара не загружено')
+        elif users[message.chat.id][0] and users[message.chat.id][1]:
+            img = open(users[message.chat.id][1], 'rb')
+            bot.send_message(message.chat.id,
+                             "Описание товара: " + users[message.chat.id][0] + '\nИзображение: ')  # затычка
+            bot.send_photo(message.chat.id, img)
+            bot.send_message(message.chat.id,
+                             "Все верно, можно провести анализ?\nЕсли нет, то пришлите нужное описание или фото",
+                             reply_markup=markup3)
+        # моделька
+    elif message.text == 'Нет':
+        bot.send_message(message.chat.id, 'Требуются описание/фото товара: ', reply_markup=markup2)
     else:
-        bot.send_message(message.chat.id, 'Неверный запрос!')
-        bot.register_next_step_handler(message, third_message)
+        if message.text not in ['Загрузить описание', 'Провести анализ', 'Доп.Информация', 'Анализ товара🛒',
+                                'Информация❓']:
+            users[message.chat.id][0] = message.text
+            save_data()
+            bot.reply_to(message, 'Описание товара загружено!:')
 
 
 bot.infinity_polling()
